@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>My Personal Assistant</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(120deg, #f6d365, #fda085);
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .chat-box {
+      background-color: #fff;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+      width: 400px;
+      max-height: 600px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user, .bot {
+      margin: 10px 0;
+      padding: 10px 14px;
+      border-radius: 15px;
+      max-width: 80%;
+      line-height: 1.5;
+    }
+
+    .user {
+      background: #c3bef0;
+      align-self: flex-end;
+    }
+
+    .bot {
+      background: #b8e1ff;
+      align-self: flex-start;
+    }
+
+    .input-area {
+      display: flex;
+      border-top: 1px solid #eee;
+    }
+
+    input {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
+
+    button {
+      border: none;
+      background: #a29bfe;
+      color: white;
+      font-size: 16px;
+      padding: 0 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #6c5ce7;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-box">
+    <div class="messages" id="messages">
+      <div class="bot">👋 Hi, I'm your personal assistant! How can I help you today?</div>
+    </div>
+
+    <div class="input-area">
+      <input id="userInput" type="text" placeholder="Type or speak here..." />
+      <button id="speakBtn">🎤</button>
+      <button id="sendBtn">➤</button>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const speakBtn = document.getElementById('speakBtn');
+    const messages = document.getElementById('messages');
+
+    function addMessage(sender, text) {
+      const msg = document.createElement('div');
+      msg.classList.add(sender);
+      msg.innerHTML = text;
+      messages.appendChild(msg);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+      addMessage('user', text);
+      input.value = '';
+
+      fetch('/assistant', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text })
+      })
+      .then(r => r.json())
+      .then(data => {
+        addMessage('bot', data.text);
+        if ('speechSynthesis' in window) {
+          const utter = new SpeechSynthesisUtterance(data.text);
+          window.speechSynthesis.speak(utter);
+        }
+        if (data.url) {
+          addMessage('bot', `🔗 <a href="${data.url}" target="_blank">Click here for more info</a>`);
+        }
+      });
+    }
+
+    sendBtn.onclick = sendMessage;
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recog = new SpeechRecognition();
+      recog.lang = 'en-US';
+      recog.onresult = e => {
+        const text = e.results[0][0].transcript;
+        input.value = text;
+        sendMessage();
+      };
+      speakBtn.onclick = () => recog.start();
+    } else {
+      speakBtn.disabled = true;
+    }
+  </script>
+</body>
+</html>
